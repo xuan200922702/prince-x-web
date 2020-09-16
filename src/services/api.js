@@ -1,5 +1,9 @@
 // const BASE_URL = 'http://localhost:8080' your service base url
-const BASE_URL = 'http://127.0.0.1:8000' // mock base url
+//const BASE_URL = 'http://127.0.0.1:8000' // mock base url
+//跨域代理前缀
+const API_PROXY_PREFIX='/api'
+const BASE_URL = process.env.NODE_ENV === 'production' ? process.env.VUE_APP_API_BASE_URL : API_PROXY_PREFIX
+// const BASE_URL = process.env.VUE_APP_API_BASE_URL
 module.exports = {
   GET_CODE: `${BASE_URL}/api/v1/getCaptcha`,
   LOGIN: `${BASE_URL}/login`,
@@ -34,6 +38,5 @@ module.exports = {
   //menulist 获取菜单列表
   MENU_LIST: `${BASE_URL}/api/v1/menulist`,
   //deptList 获取部门列表
-  DEPT_LIST: `${BASE_URL}/api/v1/deptList`,
-  ROUTES: `/routes`
+  DEPT_LIST: `${BASE_URL}/api/v1/deptList`
 }

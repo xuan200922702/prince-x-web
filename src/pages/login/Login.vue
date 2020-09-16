@@ -74,7 +74,7 @@
 
 <script>
 import CommonLayout from '@/layouts/CommonLayout'
-import {login, getcode,getRoutesConfig} from '@/services'
+import {login, getcode,getinfo} from '@/services'
 import {setAuthorization} from '@/utils/request'
 import {loadRoutes} from '@/utils/routerUtil'
 
@@ -128,7 +128,7 @@ export default {
       if (loginRes.code === 200) {
         setAuthorization({token: token,expireAt: new Date(new Date().getTime() + 3600 * 1000)})
         // 获取路由配置
-        getRoutesConfig().then(result => {
+        getinfo().then(result => {
           const routesConfig = result.data.data
           loadRoutes({router: this.$router, store: this.$store, i18n: this.$i18n}, routesConfig)
           this.$router.push('/dashboard/workplace')

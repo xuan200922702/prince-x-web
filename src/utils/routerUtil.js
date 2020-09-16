@@ -1,8 +1,7 @@
-import routerMap from '@/router/router.map'
+import routerMap from '@/router/async/router.map'
 import {mergeI18nFromRoutes} from '@/utils/i18n'
 import Router from 'vue-router'
-import {loginIgnore} from '@/router'
-import {checkAuthorization} from '@/utils/request'
+import deepMerge from 'deepmerge'
 
 /**
  * 根据 路由配置 和 路由组件注册 解析路由
@@ -67,7 +66,7 @@ function loadRoutes({router, store, i18n}, routesConfig) {
   if (asyncRoutes) {
     if (routesConfig && routesConfig.length > 0) {
       const routes = parseRoutes(routesConfig, routerMap)
-      formatAuthority(routes)
+      formatRoutes(routes)
       const finalRoutes = mergeRoutes(router.options.routes, routes)
       router.options = {...router.options, routes: finalRoutes}
       router.matcher = new Router({...router.options, routes:[]}).matcher
@@ -98,93 +97,90 @@ function mergeRoutes(target, source) {
 }
 
 /**
- * 登录守卫
- * @param router 应用路由实例
+ * 深度合并路由
+ * @param target {Route[]}
+ * @param source {Route[]}
+ * @returns {Route[]}
  */
-function loginGuard(router) {
-  router.beforeEach((to, from, next) => {
-    if (!loginIgnore.includes(to) && !checkAuthorization()) {
-      next({path: '/login'})
-    } else {
-      next()
+function deepMergeRoutes(target, source) {
+  // 映射路由数组
+  const mapRoutes = routes => {
+    const routesMap = {}
+    routes.forEach(item => {
+      routesMap[item.path] = {
+        ...item,
+        children: item.children ? mapRoutes(item.children) : undefined
+      }
+    })
+    return routesMap
+  }
+  const tarMap = mapRoutes(target)
+  const srcMap = mapRoutes(source)
+
+  // 合并路由
+  const merge = deepMerge(tarMap, srcMap)
+
+  // 转换为 routes 数组
+  const parseRoutesMap = routesMap => {
+    return Object.values(routesMap).map(item => {
+      if (item.children) {
+        item.children = parseRoutesMap(item.children)
+      } else {
+        delete item.children
+      }
+      return item
+    })
+  }
+  return parseRoutesMap(merge)
+}
+
+/**
+ * 格式化路由
+ * @param routes 路由配置
+ */
+function formatRoutes(routes) {
+  routes.forEach(route => {
+    const {path} = route
+    if (!path.startsWith('/') && path !== '*') {
+      route.path = '/' + path
     }
   })
-}
-
-/**
- * 权限守卫
- * @param router 应用路由实例
- * @param store 应用的 vuex.store 实例
- */
-function authorityGuard(router, store) {
-  router.beforeEach((to, form, next) => {
-    const permissions = store.getters['account/permissions']
-    const roles = store.getters['account/roles']
-    if (!hasPermission(to, permissions) && !hasRole(to, roles)) {
-      next({path: '/403'})
-    } else {
-      next()
-    }
-  })
-}
-
-/**
- * 判断是否有路由的权限
- * @param route 路由
- * @param permissions 用户权限集合
- * @returns {boolean|*}
- */
-function hasPermission(route, permissions) {
-  const authority = route.meta.authority || '*'
-  let required = '*'
-  if (typeof authority === 'string') {
-    required = authority
-  } else if (typeof authority === 'object') {
-    required = authority.permission
-  }
-  return required === '*' || (permissions && permissions.findIndex(item => item === required || item.id === required) !== -1)
-}
-
-/**
- * 判断是否有路由需要的角色
- * @param route 路由
- * @param roles 用户角色集合
- */
-function hasRole(route, roles) {
-  const authority = route.meta.authority || '*'
-  let required = undefined
-  if (typeof authority === 'object') {
-    required = authority.role
-  }
-  return authority === '*' || (required && roles && roles.findIndex(item => item === required || item.id === required) !== -1)
+  formatAuthority(routes)
 }
 
 /**
  * 格式化路由的权限配置
- * @param routes
+ * @param routes 路由
+ * @param pAuthorities 父级路由权限配置集合
  */
-function formatAuthority(routes) {
+function formatAuthority(routes, pAuthorities = []) {
   routes.forEach(route => {
     const meta = route.meta
+    const defaultAuthority = pAuthorities[pAuthorities.length - 1] || {permission: '*'}
     if (meta) {
       let authority = {}
       if (!meta.authority) {
-        authority.permission = '*'
+        authority = defaultAuthority
       }else if (typeof meta.authority === 'string') {
         authority.permission = meta.authority
       } else if (typeof meta.authority === 'object') {
         authority = meta.authority
-      } else {
-        console.log(typeof meta.authority)
+        const {role} = authority
+        if (typeof role === 'string') {
+          authority.role = [role]
+        }
+        if (!authority.permission && !authority.role) {
+          authority = defaultAuthority
+        }
       }
       meta.authority = authority
     } else {
-      route.meta = {
-        authority: {permission: '*'}
-      }
+      const authority = defaultAuthority
+      route.meta = {authority}
     }
+    route.meta.pAuthorities = pAuthorities
     if (route.children) {
-      formatAuthority(route.children)
+      formatAuthority(route.children, [...pAuthorities, route.meta.authority])
     }
   })
 }
@@ -200,4 +196,24 @@ function getI18nKey(path) {
   return keys.join('.')
 }
 
-export {parseRoutes, loadRoutes, loginGuard, authorityGuard, formatAuthority, getI18nKey}
+/**
+ * 加载导航守卫
+ * @param guards
+ * @param options
+ */
+function loadGuards(guards, options) {
+  const {beforeEach, afterEach} = guards
+  const {router} = options
+  beforeEach.forEach(guard => {
+    if (guard && typeof guard === 'function') {
+      router.beforeEach((to, from, next) => guard(to, from, next, options))
+    }
+  })
+  afterEach.forEach(guard => {
+    if (guard && typeof guard === 'function') {
+      router.afterEach((to, from) => guard(to, from, options))
+    }
+  })
+}
+
+export {parseRoutes, loadRoutes, formatAuthority, getI18nKey, loadGuards, deepMergeRoutes, formatRoutes}

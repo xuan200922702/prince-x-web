@@ -1,4 +1,4 @@
-import {LOGIN, ROUTES,GET_CODE,ROLE_LIST, GET_INFO,PRINCE_USER_LIST,CREATE_PRINCE_USER,UPDATE_PRINCE_USER,DELETE_PRINCE_USER,UPDATE_PASSWORD,DEPT_TREE,LOGOUT} from '@/services/api'
+import {LOGIN, GET_CODE,ROLE_LIST, GET_INFO,PRINCE_USER_LIST,CREATE_PRINCE_USER,UPDATE_PRINCE_USER,DELETE_PRINCE_USER,UPDATE_PASSWORD,DEPT_TREE,LOGOUT} from '@/services/api'
 import {request, METHOD, removeAuthorization} from '@/utils/request'
 
 /**
@@ -74,10 +74,6 @@ async function rolelist(pageIndex,pageSize,roleName,roleKey,status) {
 }
 
 
-async function getRoutesConfig() {
-  return request(ROUTES, METHOD.GET)
-}
-
 
 async function updatepwd(object) {
     return request(`${UPDATE_PASSWORD}`, METHOD.PUT,
@@ -92,4 +88,4 @@ async function logout() {
   return request(LOGOUT, METHOD.POST)
 }
 
-export {login,getcode,getinfo,princeuserlist,deptTree,rolelist,createprinceuser,updateprinceuser,deleteprinceuser,updatepwd,logout,getRoutesConfig}
+export {login,getcode,getinfo,princeuserlist,deptTree,rolelist,createprinceuser,updateprinceuser,deleteprinceuser,updatepwd,logout}

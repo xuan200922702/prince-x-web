@@ -103,11 +103,49 @@ function checkAuthorization(authType = AUTH_TYPE.BEARER) {
   return false
 }
 
+/**
+ * 加载 axios 拦截器
+ * @param interceptors
+ * @param options
+ */
+function loadInterceptors(interceptors, options) {
+  const {request, response} = interceptors
+  // 加载请求拦截器
+  request.forEach(item => {
+    let {onFulfilled, onRejected} = item
+    if (!onFulfilled || typeof onFulfilled !== 'function') {
+      onFulfilled = config => config
+    }
+    if (!onRejected || typeof onRejected !== 'function') {
+      onRejected = error => Promise.reject(error)
+    }
+    axios.interceptors.request.use(
+      config => onFulfilled(config, options),
+      error => onRejected(error, options)
+    )
+  })
+  // 加载响应拦截器
+  response.forEach(item => {
+    let {onFulfilled, onRejected} = item
+    if (!onFulfilled || typeof onFulfilled !== 'function') {
+      onFulfilled = response => response
+    }
+    if (!onRejected || typeof onRejected !== 'function') {
+      onRejected = error => Promise.reject(error)
+    }
+    axios.interceptors.response.use(
+      response => onFulfilled(response, options),
+      error => onRejected(error, options)
+    )
+  })
+}
+
 export {
   METHOD,
   AUTH_TYPE,
   request,
   setAuthorization,
   removeAuthorization,
-  checkAuthorization
+  checkAuthorization,
+  loadInterceptors
 }

@@ -5,8 +5,8 @@
 </template>
 
 <script>
-import enquireScreen from './utils/device'
-import {mapState} from 'vuex'
+import {enquireScreen} from './utils/util'
+import {mapState, mapMutations} from 'vuex'
 import themeUtil from '@/utils/themeUtil';
 import {getI18nKey} from '@/utils/routerUtil'
 
@@ -20,9 +20,7 @@ export default {
   created () {
     this.setHtmlTitle()
     this.setLanguage(this.lang)
-    enquireScreen(isMobile => {
-      this.$store.commit('setting/setDevice', isMobile)
-    })
+    enquireScreen(isMobile => this.setDevice(isMobile))
   },
   mounted() {
    this.setWeekModeTheme(this.weekMode)
@@ -39,21 +37,18 @@ export default {
     },
     'theme.mode': function(val) {
       let closeMessage = this.$message.loading(`您选择了主题模式 ${val}, 正在切换...`)
-      themeUtil.changeThemeColor(this.theme.color, val).then(() => {
-        setTimeout(closeMessage, 1000)
-      })
+      themeUtil.changeThemeColor(this.theme.color, val).then(closeMessage)
     },
     'theme.color': function(val) {
       let closeMessage = this.$message.loading(`您选择了主题色 ${val}, 正在切换...`)
-      themeUtil.changeThemeColor(val, this.theme.mode).then(() => {
-        setTimeout(closeMessage, 1000)
-      })
+      themeUtil.changeThemeColor(val, this.theme.mode).then(closeMessage)
     }
   },
   computed: {
     ...mapState('setting', ['theme', 'weekMode', 'lang'])
   },
   methods: {
+    ...mapMutations('setting', ['setDevice']),
     setWeekModeTheme(weekMode) {
       if (weekMode) {
         document.body.classList.add('week-mode')
